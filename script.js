@@ -1,3 +1,5 @@
+const API_URL = "https://script.google.com/macros/s/AKfycbxefHDAc4f_grZoSNTmhhcNKbgjbjvAV7QD0BUpo7M-m1TU-wnhvcvfVqtpakTZio1dvw/exec";
+
 const projectName = document.getElementById("projectName");
 const taskName = document.getElementById("taskName");
 const taskDate = document.getElementById("taskDate");
@@ -5,13 +7,18 @@ const deadline = document.getElementById("deadline");
 const status = document.getElementById("status");
 const priority = document.getElementById("priority");
 const notes = document.getElementById("notes");
+
 const taskLink = document.getElementById("taskLink");
 const taskFile = document.getElementById("taskFile");
+
 const addTaskBtn = document.getElementById("addTaskBtn");
 const cancelEditBtn = document.getElementById("cancelEditBtn");
+
 const filterDate = document.getElementById("filterDate");
+
 const taskList = document.getElementById("taskList");
 const carryoverList = document.getElementById("carryoverList");
+
 const formTitle = document.getElementById("formTitle");
 
 const totalTasks = document.getElementById("totalTasks");
