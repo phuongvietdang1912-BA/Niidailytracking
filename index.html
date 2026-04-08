@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Designer Work Tracker</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app">
+    <header>
+      <h1>Designer Work Tracker</h1>
+      <p>Track projects, daily jobs, revisions, deadlines, and carry-over work.</p>
+    </header>
+
+    <section class="task-form">
+      <h2 id="formTitle">Add New Task</h2>
+
+      <div class="form-grid">
+        <input type="text" id="projectName" placeholder="Project name" />
+        <input type="text" id="taskName" placeholder="Task name" />
+        
+        <input type="date" id="taskDate" />
+        <input type="date" id="deadline" />
+
+        <select id="status">
+          <option value="To Do">To Do</option>
+          <option value="In Progress">In Progress</option>
+          <option value="Done">Done</option>
+          <option value="Revision">Revision</option>
+        </select>
+
+        <select id="priority">
+          <option value="Low">Low Priority</option>
+          <option value="Medium">Medium Priority</option>
+          <option value="High">High Priority</option>
+        </select>
+      </div>
+
+      <textarea id="notes" placeholder="Notes / client feedback / revision comments"></textarea>
+
+      <div class="form-grid">
+        <input type="url" id="taskLink" placeholder="Paste link (Figma / Drive / Dropbox / client brief)" />
+        <input type="text" id="taskFile" placeholder="File reference (e.g. poster-v2.ai)" />
+      </div>
+
+      <div class="task-actions">
+        <button id="addTaskBtn">Add Task</button>
+        <button id="cancelEditBtn" type="button" class="small-btn hidden-btn">Cancel Edit</button>
+      </div>
+    </section>
+
+    <section class="filter-section">
+      <h2>View Tasks by Date</h2>
+      <input type="date" id="filterDate" />
+    </section>
+
+    <section class="summary">
+      <div class="card">
+        <h3>Total</h3>
+        <p id="totalTasks">0</p>
+      </div>
+      <div class="card">
+        <h3>Done</h3>
+        <p id="doneTasks">0</p>
+      </div>
+      <div class="card">
+        <h3>In Progress</h3>
+        <p id="progressTasks">0</p>
+      </div>
+      <div class="card">
+        <h3>Revision</h3>
+        <p id="revisionTasks">0</p>
+      </div>
+    </section>
+
+    <section class="carryover-section">
+      <h2>Unfinished Jobs from Previous Days</h2>
+      <div id="carryoverList"></div>
+    </section>
+
+    <section class="task-list-section">
+      <h2>Tasks for Selected Date</h2>
+      <div id="taskList"></div>
+    </section>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
