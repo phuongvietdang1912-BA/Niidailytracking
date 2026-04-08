@@ -7,18 +7,13 @@ const deadline = document.getElementById("deadline");
 const status = document.getElementById("status");
 const priority = document.getElementById("priority");
 const notes = document.getElementById("notes");
-
 const taskLink = document.getElementById("taskLink");
 const taskFile = document.getElementById("taskFile");
-
 const addTaskBtn = document.getElementById("addTaskBtn");
 const cancelEditBtn = document.getElementById("cancelEditBtn");
-
 const filterDate = document.getElementById("filterDate");
-
 const taskList = document.getElementById("taskList");
 const carryoverList = document.getElementById("carryoverList");
-
 const formTitle = document.getElementById("formTitle");
 
 const totalTasks = document.getElementById("totalTasks");
@@ -31,30 +26,55 @@ taskDate.value = today;
 filterDate.value = today;
 
 let editingTaskId = null;
+let allTasks = [];
 
 addTaskBtn.addEventListener("click", handleSubmit);
 filterDate.addEventListener("change", renderTasks);
 cancelEditBtn.addEventListener("click", resetForm);
 
-function getTasks() {
-  return JSON.parse(localStorage.getItem("designerTasks")) || [];
+async function apiGet(action = "list") {
+  const response = await fetch(`${API_URL}?action=${encodeURIComponent(action)}`);
+  return response.json();
 }
 
-function saveTasks(tasks) {
-  localStorage.setItem("designerTasks", JSON.stringify(tasks));
+async function apiPost(payload) {
+  const response = await fetch(API_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "text/plain;charset=utf-8"
+    },
+    body: JSON.stringify(payload)
+  });
+  return response.json();
 }
 
-function handleSubmit() {
-  if (editingTaskId) {
-    updateTask();
-  } else {
-    addTask();
+async function loadTasks() {
+  try {
+    const data = await apiGet("list");
+    if (!data.success) {
+      alert(data.message || "Failed to load tasks.");
+      return;
+    }
+
+    allTasks = data.tasks || [];
+    renderTasks();
+  } catch (error) {
+    console.error(error);
+    alert("Could not load tasks from Google Sheets.");
   }
 }
 
-function addTask() {
-  const newTask = {
-    id: Date.now(),
+async function handleSubmit() {
+  if (editingTaskId) {
+    await updateTask();
+  } else {
+    await addTask();
+  }
+}
+
+function getFormTask() {
+  return {
+    id: editingTaskId,
     projectName: projectName.value.trim(),
     taskName: taskName.value.trim(),
     taskDate: taskDate.value,
@@ -65,65 +85,74 @@ function addTask() {
     link: taskLink.value.trim(),
     file: taskFile.value.trim()
   };
-
-  if (!newTask.projectName || !newTask.taskName || !newTask.taskDate) {
-    alert("Please enter project name, task name, and date.");
-    return;
-  }
-
-  const tasks = getTasks();
-  tasks.push(newTask);
-  saveTasks(tasks);
-  resetForm();
-  renderTasks();
 }
 
-function updateTask() {
-  const updatedProjectName = projectName.value.trim();
-  const updatedTaskName = taskName.value.trim();
-  const updatedTaskDate = taskDate.value;
-
-  if (!updatedProjectName || !updatedTaskName || !updatedTaskDate) {
+function validateTask(task) {
+  if (!task.projectName || !task.taskName || !task.taskDate) {
     alert("Please enter project name, task name, and date.");
-    return;
+    return false;
   }
+  return true;
+}
 
-  const tasks = getTasks().map(task => {
-    if (task.id === editingTaskId) {
-      return {
-        ...task,
-        projectName: updatedProjectName,
-        taskName: updatedTaskName,
-        taskDate: updatedTaskDate,
-        deadline: deadline.value,
-        status: status.value,
-        priority: priority.value,
-        notes: notes.value.trim(),
-        link: taskLink.value.trim(),
-        file: taskFile.value.trim()
-      };
+async function addTask() {
+  const task = getFormTask();
+  if (!validateTask(task)) return;
+
+  try {
+    const data = await apiPost({
+      action: "create",
+      task
+    });
+
+    if (!data.success) {
+      alert(data.message || "Failed to add task.");
+      return;
     }
-    return task;
-  });
 
-  saveTasks(tasks);
-  resetForm();
-  renderTasks();
+    resetForm();
+    await loadTasks();
+  } catch (error) {
+    console.error(error);
+    alert("Could not save task to Google Sheets.");
+  }
+}
+
+async function updateTask() {
+  const task = getFormTask();
+  if (!validateTask(task)) return;
+
+  try {
+    const data = await apiPost({
+      action: "update",
+      task
+    });
+
+    if (!data.success) {
+      alert(data.message || "Failed to update task.");
+      return;
+    }
+
+    resetForm();
+    await loadTasks();
+  } catch (error) {
+    console.error(error);
+    alert("Could not update task.");
+  }
 }
 
 function editTask(id) {
-  const tasks = getTasks();
-  const task = tasks.find(t => t.id === id);
+  const task = allTasks.find(t => String(t.id) === String(id));
   if (!task) return;
 
-  editingTaskId = id;
+  editingTaskId = task.id;
 
-  projectName.value = task.projectName;
-  taskName.value = task.taskName;
-  taskDate.value = task.taskDate;
+  projectName.value = task.projectName || "";
+  taskName.value = task.taskName || "";
+  taskDate.value = task.taskDate || today;
   deadline.value = task.deadline || "";
-  status.value = task.status;
-  priority.value = task.priority;
+  status.value = task.status || "To Do";
+  priority.value = task.priority || "Low";
   notes.value = task.notes || "";
   taskLink.value = task.link || "";
   taskFile.value = task.file || "";
@@ -153,43 +182,66 @@ function resetForm() {
   cancelEditBtn.classList.add("hidden-btn");
 }
 
-function deleteTask(id) {
-  const tasks = getTasks().filter(task => task.id !== id);
-  saveTasks(tasks);
+async function deleteTask(id) {
+  try {
+    const data = await apiPost({
+      action: "delete",
+      id
+    });
 
-  if (editingTaskId === id) {
-    resetForm();
+    if (!data.success) {
+      alert(data.message || "Failed to delete task.");
+      return;
+    }
+
+    if (editingTaskId === id) {
+      resetForm();
+    }
+
+    await loadTasks();
+  } catch (error) {
+    console.error(error);
+    alert("Could not delete task.");
   }
-
-  renderTasks();
 }
 
-function toggleDone(id) {
-  const tasks = getTasks().map(task => {
-    if (task.id === id) {
-      task.status = task.status === "Done" ? "To Do" : "Done";
-    }
-    return task;
-  });
+async function toggleDone(id) {
+  try {
+    const data = await apiPost({
+      action: "toggleDone",
+      id
+    });
 
-  saveTasks(tasks);
-  renderTasks();
+    if (!data.success) {
+      alert(data.message || "Failed to change status.");
+      return;
+    }
+
+    await loadTasks();
+  } catch (error) {
+    console.error(error);
+    alert("Could not update task status.");
+  }
 }
 
-function moveTaskToToday(id) {
-  const tasks = getTasks().map(task => {
-    if (task.id === id) {
-      return {
-        ...task,
-        taskDate: today
-      };
-    }
-    return task;
-  });
+async function moveTaskToToday(id) {
+  try {
+    const data = await apiPost({
+      action: "moveToToday",
+      id
+    });
 
-  saveTasks(tasks);
-  filterDate.value = today;
-  renderTasks();
+    if (!data.success) {
+      alert(data.message || "Failed to move task.");
+      return;
+    }
+
+    filterDate.value = today;
+    await loadTasks();
+  } catch (error) {
+    console.error(error);
+    alert("Could not move task to today.");
+  }
 }
 
 function escapeHtml(text) {
@@ -208,23 +260,23 @@ function createTaskCard(task, isCarryover = false) {
   const safeFile = task.file ? escapeHtml(task.file) : "";
 
   const card = document.createElement("div");
-  card.className = `task-card ${task.priority.toLowerCase()}`;
+  card.className = `task-card ${(task.priority || "low").toLowerCase()}`;
 
   card.innerHTML = `
     <div class="task-top">
       <div>
         <div class="task-title ${task.status === "Done" ? "done-text" : ""}">
-          ${escapeHtml(task.taskName)}
+          ${escapeHtml(task.taskName || "")}
         </div>
-        <div class="task-project">Project: ${escapeHtml(task.projectName)}</div>
+        <div class="task-project">Project: ${escapeHtml(task.projectName || "")}</div>
       </div>
-      <div><strong>${escapeHtml(task.status)}</strong></div>
+      <div><strong>${escapeHtml(task.status || "")}</strong></div>
     </div>
 
     <div class="task-meta">
-      <div><strong>Date:</strong> ${escapeHtml(task.taskDate)}</div>
+      <div><strong>Date:</strong> ${escapeHtml(task.taskDate || "")}</div>
       <div><strong>Deadline:</strong> ${task.deadline ? escapeHtml(task.deadline) : "-"}</div>
-      <div><strong>Priority:</strong> ${escapeHtml(task.priority)}</div>
+      <div><strong>Priority:</strong> ${escapeHtml(task.priority || "")}</div>
       <div>${isOverdue ? '<span class="overdue">Overdue</span>' : ""}</div>
     </div>
 
@@ -238,18 +290,18 @@ function createTaskCard(task, isCarryover = false) {
     ` : ""}
 
     <div class="task-actions">
-      <button class="small-btn" onclick="toggleDone(${task.id})">
+      <button class="small-btn" onclick="toggleDone('${task.id}')">
         ${task.status === "Done" ? "Mark To Do" : "Mark Done"}
       </button>
-      <button class="small-btn edit-btn" onclick="editTask(${task.id})">
+      <button class="small-btn edit-btn" onclick="editTask('${task.id}')">
         Edit
       </button>
       ${isCarryover ? `
-        <button class="small-btn" onclick="moveTaskToToday(${task.id})">
+        <button class="small-btn" onclick="moveTaskToToday('${task.id}')">
           Move Task to Today
         </button>
       ` : ""}
-      <button class="small-btn delete-btn" onclick="deleteTask(${task.id})">
+      <button class="small-btn delete-btn" onclick="deleteTask('${task.id}')">
         Delete
       </button>
     </div>
@@ -260,11 +312,10 @@ function createTaskCard(task, isCarryover = false) {
 
 function renderTasks() {
   const selectedDate = filterDate.value;
-  const tasks = getTasks();
 
-  const selectedDateTasks = tasks.filter(task => task.taskDate === selectedDate);
+  const selectedDateTasks = allTasks.filter(task => task.taskDate === selectedDate);
 
-  const previousUnfinishedTasks = tasks.filter(task =>
+  const previousUnfinishedTasks = allTasks.filter(task =>
     task.taskDate < selectedDate && task.status !== "Done"
   );
 
@@ -310,4 +361,4 @@ window.deleteTask = deleteTask;
 window.editTask = editTask;
 window.moveTaskToToday = moveTaskToToday;
 
-renderTasks();
+loadTasks();
